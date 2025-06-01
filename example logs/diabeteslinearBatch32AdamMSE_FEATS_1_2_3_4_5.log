@@ -1,0 +1,32 @@
+Smallest Loss achieved trial 0: 0.38554468750953674, with 0.8 split, 500 epochs, 0.0001 learning rate
+Smallest Loss achieved trial 1: 0.3944268226623535, with 0.75 split, 2000 epochs, 0.0001 learning rate
+Smallest Loss achieved trial 2: 0.3849521279335022, with 0.8 split, 1000 epochs, 0.0001 learning rate
+Smallest Loss achieved trial 3: 0.3849521279335022, with 0.8 split, 1000 epochs, 0.0001 learning rate
+Average loss for (0.75, 500, 0.01) over 4 trials: 0.3952937126159668
+Average loss for (0.75, 500, 0.001) over 4 trials: 0.3978738784790039
+Average loss for (0.75, 500, 0.0001) over 4 trials: 0.6160434484481812
+Average loss for (0.8, 500, 0.01) over 4 trials: 0.40091782808303833
+Average loss for (0.8, 500, 0.001) over 4 trials: 0.39720359444618225
+Average loss for (0.8, 500, 0.0001) over 4 trials: 0.457065224647522
+Average loss for (0.9, 500, 0.01) over 4 trials: 0.4488949775695801
+Average loss for (0.9, 500, 0.001) over 4 trials: 0.43819659948349
+Average loss for (0.9, 500, 0.0001) over 4 trials: 0.4763677418231964
+Average loss for (0.75, 1000, 0.01) over 4 trials: 0.39600878953933716
+Average loss for (0.75, 1000, 0.001) over 4 trials: 0.40193092823028564
+Average loss for (0.75, 1000, 0.0001) over 4 trials: 0.45252251625061035
+Average loss for (0.8, 1000, 0.01) over 4 trials: 0.39358800649642944
+Average loss for (0.8, 1000, 0.001) over 4 trials: 0.39789268374443054
+Average loss for (0.8, 1000, 0.0001) over 4 trials: 0.4133837819099426
+Average loss for (0.9, 1000, 0.01) over 4 trials: 0.4492871165275574
+Average loss for (0.9, 1000, 0.001) over 4 trials: 0.45283693075180054
+Average loss for (0.9, 1000, 0.0001) over 4 trials: 0.4905902147293091
+Average loss for (0.75, 2000, 0.01) over 4 trials: 0.3958093523979187
+Average loss for (0.75, 2000, 0.001) over 4 trials: 0.40312162041664124
+Average loss for (0.75, 2000, 0.0001) over 4 trials: 0.4098016023635864
+Average loss for (0.8, 2000, 0.01) over 4 trials: 0.39907556772232056
+Average loss for (0.8, 2000, 0.001) over 4 trials: 0.404171347618103
+Average loss for (0.8, 2000, 0.0001) over 4 trials: 0.40291154384613037
+Average loss for (0.9, 2000, 0.01) over 4 trials: 0.44443148374557495
+Average loss for (0.9, 2000, 0.001) over 4 trials: 0.4306395649909973
+Average loss for (0.9, 2000, 0.0001) over 4 trials: 0.44524797797203064
+Best model on average had loss 0.39358800649642944 with 0.8 split, 1000 epochs, 0.0001 learning rate
