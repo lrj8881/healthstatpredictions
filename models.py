@@ -11,6 +11,7 @@
 import torch
 import matplotlib.pyplot as plt
 import logging
+import os
 import argparse
 from torch import nn
 from torch.utils.data import DataLoader
@@ -74,29 +75,22 @@ def trainandvalidate(data, model, split, numepochs, lr):
 #[data][type of model]Batch32AdamMSE_FEATS[all features trained on].log
 
 def gridsearch(data, modeltype, trials):
-
     epochs = [500,1000,2000]
     splits = [.75, .8, .9]
     lrs = [.01,.001,.0001]
     feat_str = "_".join(map(str, data.feats))
-    filename = f"{data.name}_{modeltype}_Batch32AdamMSE_FEATS_{feat_str}.log"
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
+    filename = f"logs/{data.name}_{modeltype}_Batch32AdamMSE_FEATS_{feat_str}.log"
     logging.basicConfig(filename=filename, format='%(message)s',filemode='w')
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     minloss = torch.finfo(torch.float).max
-    mintuple = ()
     infodict = {}
     for i in range(trials):
-        #Uncomment the print lines to see gridsearch working
-        #(I find comfort in seeing the print statements to prove the code is actually running)
-        #print("trial")
-        #print(i)
         for epoch in epochs:
-            #print(epoch)
             for split in splits:
-                #print(split)
                 for lr in lrs:
-                    #print(lr)
                     #below restarts model 
                     if modeltype == "linear":
                         model = torch.nn.Linear(len(data.feats),1)
@@ -112,12 +106,18 @@ def gridsearch(data, modeltype, trials):
                     if loss<minloss:
                         minloss = loss
                         mintuple = (split, epoch, lr)
-        logger.info(f"Smallest Loss achieved trial {i}: {minloss}, with {mintuple[0]} split, {mintuple[1]} epochs, {lr} learning rate")
+                        mindict = model.state_dict
+        logger.info(f"Smallest Loss achieved trial {i}: {minloss}, with {mintuple[0]} split, {mintuple[1]} epochs, {mintuple[2]} learning rate")
     for tuple in infodict.keys():
         infodict[tuple] /= trials 
         logger.info(f"Average loss for {tuple} over {trials} trials: {infodict[tuple]}")
     best = min(infodict.items(), key=lambda x: x[1])[0] #sorts by loss, returns 1st place
-    logger.info(f"Best model on average had loss {infodict[best]} with {mintuple[0]} split, {mintuple[1]} epochs, {lr} learning rate")
+    logger.info(f"Best model on average had loss {infodict[best]} with {best[0]} split, {best[1]} epochs, {best[2]} learning rate")
+    #Below saves weights & biases to the log
+    if modeltype == "linear":
+        logger.info(f"Weight data: {model.weight.data}")
+        logger.info(f"Bias data: {model.bias.data}")
+    #Weights are only saved for linear because they are simple and understandable for linear; too much data for nn
     return best
 
 #Parses command line arguments and runs desired commands
@@ -126,13 +126,7 @@ def gridsearch(data, modeltype, trials):
 #See README for more detailed usage instructions
 
 def main():
-    #Bestdict holds best parameters to be used when grid search isn't run
-    #Filled from previous gridsearches (can be seen in examplelogs)
-    bestdict = {}
-    bestdict[("diabetes", "linear")] = (.8, 1000, .0001)
-    bestdict[("diabetes", "nn")] = (.8, 2000, .0001)
-    bestdict[("heart disease", "linear")] = (.75, 500, .0001)
-    bestdict[("heart disease", "nn")] = (.8, 2000, .0001)
+    
 
     parser = argparse.ArgumentParser(description="Train a model on public health data.")
     parser.add_argument("cause", type=str.lower, help="Cause of death to predict (e.g., Diabetes, Heart disease)")
@@ -141,34 +135,59 @@ def main():
     parser.add_argument("--features", type=int, nargs="+", default=[1, 2, 3, 4, 5],
                         help="List of feature indices to use (default: 1 2 3 4 5)")
     parser.add_argument("--gs", type=int, default=0, help="Number of trials for grid search. 0 (default) does not run gridsearch, and uses hyperparameters from best previous gridsearch (preprogrammed).")
-    parser.add_argument(
-    "-g", "--graph",
-    action="store_true",
-    help="If set, display graphs of the model predictions."
+    parser.add_argument("-g1", "--graph1", action="store_true",help="If set, display graphs of the model predictions vs each feature (1 graph each feature).")
+    parser.add_argument("-g2", "--graph2", action="store_true",help="If set, display graphs of the model predictions vs true values.")
+    parser.add_argument("-s", "--save", action="store_true",help="If set, saves the model (or best model from gridsearch)."
     )
     args = parser.parse_args()
     data = sqlhealthds(args.cause, args.features)
 
+    #If grid search is on, grid searches for num of trials given and saves data
+
     if args.gs != 0:
         best = gridsearch(data, args.modeltype, args.gs)
+        paramsave(data, args.modeltype, best)
 
     else:
         try:
-            best = bestdict[(args.cause, args.modeltype)]
+            best = paramfetch(data, args.modeltype)
         except KeyError:
+            #In theory, can test with other causes of death (not tested) which would not have any defaults.
             raise ValueError(f"No default parameters found for {args.cause} with {args.modeltype}. Please run gridsearch.")
-
     if args.modeltype == "linear":
         finalmodel = torch.nn.Linear(len(data.feats), 1)
     else:
         finalmodel = NeuralNetwork(len(data.feats))
 
     finalmodel, finalloss = trainandvalidate(data, finalmodel, best[0], best[1], best[2])
-    print(f"Model validation loss: {finalloss}")
 
-    if args.graph:
-        graphmaker(data, finalmodel)
+   #Prints data about the model if gridsearch isn't used (if it is, this data is logged)
+    if args.gs == 0:
+        print(f"Model validation loss: {finalloss}")
+
+
+    if args.graph1:
+        scattergraphmaker(data, finalmodel)
+    if args.graph2:
+        predictgraphmaker(data, finalmodel)
     
+    #Model is saved in "models" folder if -s flag is used
+    if args.save:
+        if not os.path.exists("models"):
+            os.makedirs("models")
+        filename = f"models/{data.name}_{args.modeltype}_Batch32AdamMSE_FEATS_{args.features}"
+        i = 1
+        newfilename = filename
+        while True:
+            if not os.path.isfile(newfilename):
+                break
+            else:
+                newfilename = filename + str(i) + ".pt"
+                i += 1
+        newfilename = newfilename + ".pt"
+        torch.save(finalmodel.state_dict(), newfilename)
+                   
+
     data.close()
 if __name__ == "__main__":
     main()

@@ -49,12 +49,83 @@ def nonechecker(statlist, cause, cur):
         print(f"Stat {i} Proportion Null:")
         print(fetchfirst(cur, f"SELECT COUNT(*) FROM {sqlify(cause)} WHERE Stat{i} IS NULL")/total)
 
+# Checks if table bestparams exists
+#Creates it and prefills with presets if it does not
 
-#Creates graphs of each statistic vs. deaths per million from the given cause, and displays them
-#If given a model, displays model predictions as a red line
+def paramexist(data):
+    exists = fetchfirst(data.cur, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='bestparams'")
+    if exists == 0:
+        data.cur.executescript("""
+        CREATE TABLE bestparams (features INT, cause TEXT, model TEXT, split FLOAT, epochs INT,  lr FLOAT);
+        INSERT INTO bestparams (features, cause, model, split, epochs, lr) VALUES (123456, 'diabetes', 'linear', 0.75, 1000, 0.01);
+        INSERT INTO bestparams (features, cause, model, split, epochs, lr) VALUES (123456, 'diabetes', 'nn', 0.8, 2000, 0.01);
+        INSERT INTO bestparams (features, cause, model, split, epochs, lr) VALUES (123456, 'heart_disease', 'linear', 0.75, 500, 0.01);
+        INSERT INTO bestparams (features, cause, model, split, epochs, lr) VALUES (123456, 'heart_disease', 'nn', 0.75, 2000, 0.01);
+                               """)
 
-def graphmaker(ds, model = None):
-    ydata = fetchfirst(ds.cur, f"SELECT Deaths_Per_Million FROM {sqlify(ds.table)}")
+# Saves optimal gridsearch parameters to table bestparams
+# Will not overwrite if there is already a parameter saved (just keeps first params)
+
+def paramsave(data, modeltype, best):
+    paramexist(data)
+    feats = int("".join(str(i) for i in data.feats))
+    
+    exists = data.cur.execute("SELECT 1 FROM bestparams WHERE features = ? AND cause = ? AND model = ?", (feats,sqlify(data.name), modeltype))
+    if not exists.fetchone():
+        
+        data.cur.execute("INSERT INTO bestparams (features, cause, model, split, epochs, lr) VALUES (?, ?, ?, ?, ?, ?)", 
+                    (feats, sqlify(data.name), modeltype, best[0], best[1], best[2]))
+        
+        data.con.commit()
+
+#Gets optimal previously gridsearched parameters from the table. 
+#If there are no optimal parameters presaved, then just uses the parameters for all features (preloaded)
+def paramfetch(data, modeltype):
+    paramexist(data)
+    feats = int("".join(str(i) for i in data.feats))
+    exists = data.cur.execute(
+        "SELECT split, epochs, lr FROM bestparams WHERE features = ? AND cause = ? AND model = ?",
+        (feats, sqlify(data.name), modeltype)).fetchone()
+
+    if exists:
+        return exists
+    else:
+        print("No presaved hyperparameters found for this model. Model with all features will be used.")
+        return data.cur.execute(
+            "SELECT split, epochs, lr FROM bestparams WHERE features = 123456 AND cause = ? AND model = ?",
+            (sqlify(data.name), modeltype)).fetchone()
+
+#Makes graph2 (activated by -g2 flag)
+
+
+def predictgraphmaker(ds, model):
+    x = []
+    ytrue = []
+    ypred = []
+    for i in range(len(ds)):
+        xraw, yraw = ds[i]
+        #normalize x to be fed into the model
+        xnorm = (xraw - ds.xmean) / (ds.xstd + 1e-6)
+        y = model(xnorm.unsqueeze(0)).item()
+        yunnorm = y * ds.ystd + ds.ymean
+        #unnormalize y after it's been inputted from the model
+        x.append(xraw)
+        ytrue.append(yraw.item())
+        ypred.append(yunnorm)
+
+    plt.scatter(ytrue, ypred, alpha=0.7)
+    plt.xlabel("Actual Deaths per Million")
+    plt.ylabel("Predicted Deaths per Million")
+    plt.title(f"Predicted vs Actual DPM ({ds.name.title()}) with features {",".join(str(i) for i in ds.feats)}")
+    plt.plot([min(ytrue), max(ytrue)], [min(ytrue), max(ytrue)], color="red")
+    plt.grid(True)
+    plt.show()
+
+#Creates graph1 (activated by -g1 flag); graph of each statistic vs. deaths per million from the given cause
+# as a scatterplot; if given a model, displays a red line of model predictions
+
+def scattergraphmaker(ds, model = None):
+    ydata = fetchfirst(ds.cur, f"SELECT Deaths_Per_Million FROM {ds.table}")
     abrstat = [
         "Overweight",
         "Obese",
@@ -86,17 +157,17 @@ def graphmaker(ds, model = None):
             y_vals = y_vals * ds.ystd + ds.ymean #Unnormalizes y
             axissub.plot(x_vals, y_vals.detach(), color='red')
             axissub.set_xlabel(abrstat[feat], size="small")
-            axissub.set_ylabel(f"DPM from {ds.name.capitalize()}", size="small")
+            axissub.set_ylabel(f"DPM from {ds.name.title()}", size="small")
     #With no model given, simply graphs scatterplots of all data, in a 3 x 3 grid. 
     if model is None:
         figure, axis = plt.subplots(3, 3)
         for i, stat in enumerate(abrstat):
             axis[i%3,i//3].scatter(
-            fetchfirst(ds.cur, f"SELECT Stat{i} FROM {ds.name}"), ydata
+            fetchfirst(ds.cur, f"SELECT Stat{i} FROM {ds.table}"), ydata
          )
             axis[i%3,i//3].set_xlabel(abrstat[i], size="small")
-            axis[i%3,i//3].set_ylabel(f"DPM from {ds.name}", size="small")
+            axis[i%3,i//3].set_ylabel(f"DPM from {ds.name.title()}", size="small")
     plt.suptitle(
-        f"Various Statewide Statistics vs. Deaths per Million from {ds.name.capitalize()} (Across years 2011 - 2017)",
+        f"Various Statewide Statistics vs. Deaths per Million from {ds.name.title()} (Across years 2011 - 2017)",
         size="large")
     plt.show()
