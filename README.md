@@ -26,10 +26,10 @@ Contents:
 logs(folder): Contains example log files produced by grid search, the ones used to fill the default dictionary (see description for the --gs argument below). (If gridsearch is run, this is where new logs
 will go).
 Contents:
---diabetes_linear_Batch32AdamMSE_FEATS_1_2_3_4_5.log
---diabetes_nn_Batch32AdamMSE_FEATS_1_2_3_4_5.log
---heart disease_linear_Batch32AdamMSE_FEATS_1_2_3_4_5.log
---heart disease_nn_Batch32AdamMSE_FEATS_1_2_3_4_5.log
+--diabetes_linear_Batch32AdamMSE_FEATS_1_2_3_4_5_6.log
+--diabetes_nn_Batch32AdamMSE_FEATS_1_2_3_4_5_6.log
+--heart disease_linear_Batch32AdamMSE_FEATS_1_2_3_4_5_6.log
+--heart disease_nn_Batch32AdamMSE_FEATS_1_2_3_4_5_6.log
 
 Dependencies:
 
@@ -41,7 +41,7 @@ Dependencies:
 Running the Code:
 
 To run, use the command
-python models.py <cause> <modeltype> [--features 1 2 3 4 5] [--gs N] [-g] [-s]
+python models.py <cause> <modeltype> [--features 1 2 3 4 5 6] [--gs N] [-g] [-s]
 
 <cause> can theoretically be any cause appearing in the dataset "C:\Users\drago\Downloads\NCHS_-_Leading_Causes_of_Death__United_States.csv"
 but code has been tested on and built for the two causes of death "diabetes" and "heart disease"
